@@ -4,7 +4,13 @@
 #include "Arduino.h"
 
 
+const int kTarget = 25500;
 
+typedef enum {
+  STANDBY = 0,
+  CALIBRATE,
+  GAME,
+} state_t;
 
 class DbsPressureGame
 {
@@ -13,20 +19,33 @@ class DbsPressureGame
     void HandleFlow(void);
 
   private:
-    int errorToTargetPWM(int error);
-    int errorToMorePWM(int error);
-    int errorToLessPWM(int error);
+    void UpdateLEDCoefficients(void);
+    void UpdateLEDPwm(void);
+    void SampleForce(void);
+    void PrintVars(void);
 
     // Pins
     unsigned char a0;
-    unsigned char rled;
-    unsigned char wled;
-    unsigned char gled;
+    unsigned char moreled;
+    unsigned char lessled;
+    unsigned char targetled;
 
     // Force
     int force;
     int target;
     int error;
+
+    // LED params
+    int maxerror;
+    int minerror;
+    int mmore;
+    int mless;
+    int m1target;
+    int m2target;
+
+    int targetpwm;
+    int morepwm;
+    int lesspwm;
 
     // Program Flow
     unsigned long tnow;

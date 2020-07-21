@@ -7,77 +7,79 @@ DbsPressureGame::DbsPressureGame() {
   tprev = 0;
 
   a0 = A0;
-  rled = 3;
-  wled = 5;
-  gled = 6;
+  lessled = 3;
+  targetled = 5;
+  moreled = 6;
 
   pinMode(a0, INPUT_PULLUP);
-  pinMode(rled, OUTPUT);
-  pinMode(wled, OUTPUT);
-  pinMode(gled, OUTPUT);
+  pinMode(lessled, OUTPUT);
+  pinMode(targetled, OUTPUT);
+  pinMode(moreled, OUTPUT);
 
   force = 0;
   target = 500;
 
+  UpdateLEDCoefficients();
+
 }
 
+void DbsPressureGame::UpdateLEDCoefficients(void) {
 
+  maxerror = target;
+  minerror = target - 1024;
 
-int DbsPressureGame::errorToTargetPWM(int error) {
-  int slope = -1;
-  int rtn = slope * abs(error) + 255;
-  if (rtn < 0)
-    rtn = 0;
-  return rtn;
+  m1target = -(25500 / minerror);
+  m2target = -(25500 / maxerror);
+  mmore = (25500 / maxerror);
+  mless = (25500 / minerror); 
 }
 
-int DbsPressureGame::errorToMorePWM(int error) {
-  if (error < 0)
-    return 0;
-
-  int slope = 1;
-  int rtn = slope * error;
-
-  return rtn;
-}
-
-int DbsPressureGame::errorToLessPWM(int error) {
-  if (error > 0)
-    return 0;
-
-  int slope = -1;
-  int rtn = slope * error;
-
-  return rtn;
-}
-
-void DbsPressureGame::HandleFlow(void) {
-
-  if ((tnow = millis()) < (tprev + 100))
-    return;
-  tprev = tnow;
-
+void DbsPressureGame::SampleForce(void) {
   force = analogRead(a0);
-
   error = target - force;
+}
 
-  int val1 = errorToTargetPWM(error);
-  int val2 = errorToMorePWM(error);
-  int val3 = errorToLessPWM(error);
-  analogWrite(rled, val3);
-  analogWrite(wled, val1);
-  analogWrite(gled, val2);
+void DbsPressureGame::UpdateLEDPwm(void) {
+  if (error < 0)
+    targetpwm = (m1target*error + kTarget + 99)/100;
+  else
+    targetpwm = (m2target*error + kTarget + 99)/100;
 
+  morepwm = (mmore*error + 99)/100;
+  if (morepwm < 0)
+    morepwm = 0;
+
+  lesspwm = (mless*error + 99)/100;
+  if (lesspwm < 0)
+    lesspwm = 0;
+
+  analogWrite(lessled, lesspwm);
+  analogWrite(targetled, targetpwm);
+  analogWrite(moreled, morepwm);
+}
+
+void DbsPressureGame::PrintVars(void) {
+  Serial.print(tnow);
+  Serial.print('\t');
   Serial.print(force);
   Serial.print('\t');
   Serial.print(error);
   Serial.print('\t');
-  Serial.print(val1);
+  Serial.print(morepwm);
   Serial.print('\t');
-  Serial.print(val2);
+  Serial.print(targetpwm);
   Serial.print('\t');
-  Serial.print(val3);
+  Serial.print(lesspwm);
   Serial.print('\t');
-  Serial.println(tnow);
+  Serial.println();
+}
 
+void DbsPressureGame::HandleFlow(void) {
+  if ((tnow = millis()) < (tprev + 100))
+    return;
+  tprev = tnow;
+
+  SampleForce();
+  UpdateLEDPwm();
+  PrintVars();
 }
