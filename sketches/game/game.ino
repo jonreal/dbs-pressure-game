@@ -4,6 +4,7 @@ DbsPressureGame s;
 
 void setup() {
   Serial.begin(9600);
+  s.CalibrateBias();
 }
 
 void loop() {
