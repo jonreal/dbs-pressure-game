@@ -64,9 +64,9 @@ class DbsPressureGame
     int m1target;
     int m2target;
 
-    int targetpwm;
-    int morepwm;
-    int lesspwm;
+    long targetpwm;
+    long morepwm;
+    long lesspwm;
 
     // Program Flow
     unsigned long tnow;

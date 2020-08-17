@@ -11,6 +11,7 @@ DbsPressureGame::DbsPressureGame() {
   targetled = 5;
   moreled = 6;
   button = 13;
+  targetout = 9;
 
   pinMode(a0, INPUT_PULLUP);
   pinMode(lessled, OUTPUT);
@@ -70,9 +71,10 @@ int DbsPressureGame::Calibrate(void) {
   if (lesspwm > 255)
     lesspwm = 255;
 
-  if (calibratecnt >= 250) {
-    UpdateLEDCoefficients();
+  if (calibratecnt >= 1000) {
     target = (3*mvcforce + 3) / 4;
+    calibratecnt = 0;
+    UpdateLEDCoefficients();
     return 1;
   }
   else
@@ -81,13 +83,13 @@ int DbsPressureGame::Calibrate(void) {
 
 void DbsPressureGame::UpdateLEDCoefficients(void) {
 
-  maxerror = target - biasforce;
+  maxerror = target;
   minerror = target - 1024;
 
-  m1target = -(25500 / minerror);
-  m2target = -(25500 / maxerror);
-  mmore = (25500 / maxerror);
-  mless = (25500 / minerror); 
+  m1target = -(kTarget / minerror);
+  m2target = -(kTarget / maxerror);
+  mmore = (kTarget / maxerror);
+  mless = (kTarget / minerror); 
 }
 
 void DbsPressureGame::SampleForce(void) {
@@ -102,7 +104,7 @@ void DbsPressureGame::SetGameLEDPwm(void) {
     morepwm = 0;
   } else {
     targetpwm = (m2target*error + kTarget + 99)/100;
-    morepwm = (mmore*error + 99)/100 - biasforce;
+    morepwm = (mmore*error + 99)/100 + biasforce;
     lesspwm = 0;
   }
   if (targetpwm < 0)
@@ -128,11 +130,13 @@ void DbsPressureGame::SetLEDOff(void) {
 
 void DbsPressureGame::SetStandyLEDPwm(void) {
       targetpwm = (force + 3) /4;
-      if ((cnt%10) == 0) {
+      if (targetpwm > 255)
+        targetpwm = 255;
+      if ((cnt%50) == 0) {
         morepwm = 10;
         lesspwm = 0;
       }
-      if ((cnt%20) == 0) {
+      if ((cnt%100) == 0) {
         morepwm = 0;
         lesspwm = 10;
       }
@@ -143,6 +147,8 @@ void DbsPressureGame::UpdateLEDPwm(void) {
   analogWrite(targetled, targetpwm);
   analogWrite(moreled, morepwm);
   analogWrite(targetout, target/4);
+
+
 }
 
 void DbsPressureGame::BlinkLED(void) {
@@ -184,6 +190,14 @@ void DbsPressureGame::PrintVars(void) {
   Serial.print('\t');
   Serial.print(target);
   Serial.print('\t');
+  Serial.print(m1target);
+  Serial.print('\t');
+  Serial.print(m2target);
+  Serial.print('\t');
+  Serial.print(mmore);
+  Serial.print('\t');
+  Serial.print(mless);
+  Serial.print('\t');
   Serial.println();
 }
 
@@ -217,7 +231,6 @@ void DbsPressureGame::HandleFlow(void) {
         SetLEDOff();
         BlinkLED();
         mvcforce = 0;
-        calibratecnt = 0;
         state = CALIBRATE;
       }
       break;
@@ -232,11 +245,12 @@ void DbsPressureGame::HandleFlow(void) {
       if (ButtonPush()) {
         BlinkLED();
         mvcforce = 0;
-        calibratecnt = 0;
         state = CALIBRATE;
       }
       break;
   }
   UpdateLEDPwm();
-  PrintVars();
+
+  // uncomment for debug
+  //PrintVars();
 }
